@@ -4,28 +4,28 @@ import Link from 'next/link';
 import React, { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import {
-    FaBox,
-    FaBriefcase,
-    FaCheckCircle,
-    FaChevronDown,
-    FaChevronRight,
-    FaChevronUp,
-    FaEdit,
-    FaEllipsisH,
-    FaExclamationTriangle,
-    FaFileImport,
-    FaGripVertical,
-    FaPlus,
-    FaSave,
-    FaSearch,
-    FaShieldAlt,
-    FaSync,
-    FaTags,
-    FaTimes,
-    FaTimesCircle,
-    FaToggleOff,
-    FaToggleOn,
-    FaTrash
+  FaBox,
+  FaBriefcase,
+  FaCheckCircle,
+  FaChevronDown,
+  FaChevronRight,
+  FaChevronUp,
+  FaEdit,
+  FaEllipsisH,
+  FaExclamationTriangle,
+  FaFileImport,
+  FaGripVertical,
+  FaPlus,
+  FaSave,
+  FaSearch,
+  FaShieldAlt,
+  FaSync,
+  FaTags,
+  FaTimes,
+  FaTimesCircle,
+  FaToggleOff,
+  FaToggleOn,
+  FaTrash
 } from 'react-icons/fa';
 import useSWR from 'swr';
 
@@ -39,13 +39,13 @@ import axiosInstance from '@/lib/axiosInstance';
 import { APP_NAME } from '@/lib/constants';
 import { formatID, formatNumber } from '@/lib/utils';
 import {
-    createCategoryDefaultValues,
-    createCategorySchema,
-    CreateCategorySchema,
+  createCategoryDefaultValues,
+  createCategorySchema,
+  CreateCategorySchema,
 } from '@/lib/validators/admin/categories/categories.validator';
 import {
-    createServiceDefaultValues,
-    CreateServiceSchema
+  createServiceDefaultValues,
+  CreateServiceSchema
 } from '@/lib/validators/admin/services/services.validator';
 import { mutate } from 'swr';
 
@@ -359,7 +359,8 @@ const CreateServiceForm: React.FC<{
   onClose: () => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'pending') => void;
   onRefresh?: () => void;
-}> = ({ onClose, showToast, onRefresh }) => {
+  refreshAllData?: () => Promise<void>;
+}> = ({ onClose, showToast, onRefresh, refreshAllData }) => {
   const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading } = useGetCategories();
   const { data: serviceTypesData, error: serviceTypesError, isLoading: serviceTypesLoading } = useSWR('/api/admin/service-types', fetcher);
   const [isPending, startTransition] = useTransition();
@@ -414,9 +415,10 @@ const CreateServiceForm: React.FC<{
         if (response.data.success) {
           reset();
           showToast(response.data.message, 'success');
-          mutate('/api/admin/services/get-services');
-          mutate('/api/admin/services/stats');
-          // Live refresh parent data
+          // Live refresh all data
+          if (refreshAllData) {
+            await refreshAllData();
+          }
           if (onRefresh) onRefresh();
           onClose(); // Close modal on success
         } else {
@@ -1180,7 +1182,7 @@ const EditCategoryForm = ({ categoryId, categoryName, onClose, showToast }: {
         if (res.data.success) {
           showToast(res.data.message || 'Category updated successfully', 'success');
           mutate('/api/admin/categories');
-          mutate('/api/admin/services/get-services'); // Refresh services to show updated category names
+          mutate('/api/admin/services'); // Refresh services to show updated category names
           onClose();
         } else {
           showToast(res.data.error || 'Failed to update category', 'error');
@@ -1298,10 +1300,11 @@ const EditCategoryForm = ({ categoryId, categoryName, onClose, showToast }: {
 };
 
 // Edit Service Form Component (integrated)
-const EditServiceForm = ({ serviceId, onClose, showToast }: { 
-  serviceId: number; 
+const EditServiceForm = ({ serviceId, onClose, showToast, refreshAllData }: {
+  serviceId: number;
   onClose: () => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'pending') => void;
+  refreshAllData?: () => Promise<void>;
 }) => {
   const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading } = useGetCategories();
   const { data: serviceTypesData, error: serviceTypesError, isLoading: serviceTypesLoading } = useSWR('/api/admin/service-types', fetcher);
@@ -1383,8 +1386,10 @@ const EditServiceForm = ({ serviceId, onClose, showToast }: {
         console.log('Edit API response:', response.data);
         if (response.data.success) {
           showToast(response.data.message || 'Service updated successfully', 'success');
-          mutate('/api/admin/services/get-services');
-          mutate('/api/admin/services/stats');
+          // Live refresh all data
+          if (refreshAllData) {
+            await refreshAllData();
+          }
           onClose(); // Close modal on success
         } else {
           showToast(response.data.error || 'Failed to update service', 'error');
@@ -1899,6 +1904,28 @@ function AdminServicesPage() {
   const { data, error, isLoading, mutate: refreshServices } = useGetServices();
   const { data: categoriesData, mutate: refreshCategories } = useGetCategories();
 
+  // Global refresh function for live updates
+  const refreshAllData = useCallback(async () => {
+    try {
+      await Promise.all([
+        refreshServices(),
+        refreshCategories(),
+        // Refresh stats
+        fetch('/api/admin/services/stats').then(res => res.json()).then(data => {
+          if (data.data) {
+            setStats(prev => ({
+              ...prev,
+              ...data.data,
+              totalCategories: categoriesData?.data?.length || prev.totalCategories,
+            }));
+          }
+        })
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  }, [refreshServices, refreshCategories, categoriesData?.data?.length]);
+
   // State declarations
   const [stats, setStats] = useState({
     totalServices: 0,
@@ -2185,18 +2212,12 @@ function AdminServicesPage() {
     setCreateCategoryModalClosing(false);
   };
 
-  // Live refresh functions
-  const refreshAllData = useCallback(async () => {
-    await Promise.all([
-      refreshServices(),
-      refreshCategories()
-    ]);
-  }, [refreshServices, refreshCategories]);
+
 
   const handleCloseEditModal = () => {
     setEditServiceModal(prev => ({ ...prev, closing: true }));
     setTimeout(() => {
-      setEditServiceModal({ open: false, serviceId: '', closing: false });
+      setEditServiceModal({ open: false, serviceId: 0, closing: false });
     }, 300); // Match animation duration
   };
 
@@ -2438,8 +2459,7 @@ function AdminServicesPage() {
 
       if (response.data.success) {
         showToast(response.data.message, 'success');
-        mutate('/api/admin/services/get-services');
-        mutate('/api/admin/services/stats');
+        await refreshAllData();
       } else {
         showToast('Failed to update service status', 'error');
       }
@@ -2462,7 +2482,7 @@ function AdminServicesPage() {
 
       if (response.data.success) {
         showToast('Refill setting updated', 'success');
-        mutate('/api/admin/services/get-services');
+        await refreshAllData();
       } else {
         showToast('Failed to update refill setting', 'error');
       }
@@ -2483,7 +2503,7 @@ function AdminServicesPage() {
 
       if (response.data.success) {
         showToast('Cancel setting updated', 'success');
-        mutate('/api/admin/services/get-services');
+        await refreshAllData();
       } else {
         showToast('Failed to update cancel setting', 'error');
       }
@@ -2530,11 +2550,7 @@ function AdminServicesPage() {
       });
 
       showToast(`Successfully ${newToggleState ? 'activated' : 'deactivated'} ${categoryName} category`, 'success');
-      mutate('/api/admin/categories');
-      mutate('/api/admin/services/get-services');
-      mutate('/api/admin/services/stats');
-      // Live refresh parent data
-      if (refreshAllData) refreshAllData();
+      await refreshAllData();
     } catch (error: any) {
       setActiveCategoryToggles(prev => ({
         ...prev,
@@ -2557,8 +2573,7 @@ function AdminServicesPage() {
 
       if (response.data.success) {
         showToast(response.data.message || 'Service deleted successfully', 'success');
-        mutate('/api/admin/services/get-services');
-        mutate('/api/admin/services/stats');
+        await refreshAllData();
       } else {
         showToast(response.data.error || 'Failed to delete service', 'error');
       }
@@ -2596,8 +2611,7 @@ function AdminServicesPage() {
       }
 
       setSelectedServices([]); // Clear selection
-      mutate('/api/admin/services/get-services');
-      mutate('/api/admin/services/stats');
+      await refreshAllData();
       handleCloseDeleteConfirmation();
     } catch (error: any) {
       console.error('Bulk delete error:', error);
@@ -2715,8 +2729,7 @@ function AdminServicesPage() {
       if (selectedBulkOperation !== 'delete') {
         setSelectedServices([]);
         setSelectedBulkOperation(''); // Clear the selected operation
-        mutate('/api/admin/services/get-services');
-        mutate('/api/admin/services/stats');
+        await refreshAllData();
       }
     } catch (error: any) {
       showToast(`Error performing batch operation: ${error.message || 'Something went wrong'}`, 'error');
@@ -2788,9 +2801,7 @@ function AdminServicesPage() {
           showToast(response.data.message || `Successfully deleted "${categoryName}" category and all services`, 'success');
         }
 
-        mutate('/api/admin/categories');
-        mutate('/api/admin/services/get-services');
-        mutate('/api/admin/services/stats');
+        await refreshAllData();
         handleCloseDeleteCategoryModal();
       } else {
         showToast(response.data.error || 'Failed to delete category', 'error');
@@ -3741,6 +3752,7 @@ function AdminServicesPage() {
                 serviceId={editServiceModal.serviceId}
                 onClose={handleCloseEditModal}
                 showToast={showToast}
+                refreshAllData={refreshAllData}
               />
             </div>
           </div>
@@ -3764,6 +3776,7 @@ function AdminServicesPage() {
                 onClose={handleCloseCreateModal}
                 showToast={showToast}
                 onRefresh={refreshAllData}
+                refreshAllData={refreshAllData}
               />
             </div>
           </div>

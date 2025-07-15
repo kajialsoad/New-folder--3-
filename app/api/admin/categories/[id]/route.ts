@@ -30,7 +30,7 @@ export async function PUT(
           position: 'top',
           userId: user?.id ?? '',
           id: {
-            not: id,
+            not: parseInt(id),
           },
         },
         data: {
@@ -57,7 +57,7 @@ export async function PUT(
     // Update the category in the database
     await db.category.update({
       where: {
-        id: id,
+        id: parseInt(id),
       },
       data: updateData,
     });
@@ -93,7 +93,7 @@ export async function GET(
     
     const result = await db.category.findUnique({
       where: {
-        id: id,
+        id: parseInt(id),
       },
     });
     

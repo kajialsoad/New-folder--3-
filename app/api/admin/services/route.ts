@@ -137,28 +137,51 @@ export async function POST(request: Request) {
       return defaultValue;
     };
 
+    // Helper function to convert string to integer for IDs
+    const toInt = (value: unknown): number | undefined => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string' && value.trim() !== '') {
+        const num = parseInt(value);
+        return isNaN(num) ? undefined : num;
+      }
+      return undefined;
+    };
+
+    // Prepare create data - only include fields that are provided and valid
+    const createData: any = {
+      name: name || '',
+      description: description || '',
+      rate: toNumber(rate, 0),
+      min_order: toNumber(min_order, 0),
+      max_order: toNumber(max_order, 0),
+      perqty: toNumber(perqty, 1000),
+      avg_time: avg_time || '',
+      updateText: updateText || '',
+      refill: toBool(refill),
+      cancel: toBool(cancel),
+      refillDays: toNumber(refillDays, 30),
+      refillDisplay: toNumber(refillDisplay, 24),
+      personalizedService: toBool(personalizedService),
+      serviceSpeed: serviceSpeed || 'medium',
+      mode: mode || 'manual',
+      userId: session.user.id,
+    };
+
+    // Add categoryId if provided and valid
+    const categoryIdInt = toInt(categoryId);
+    if (categoryIdInt !== undefined) {
+      createData.categoryId = categoryIdInt;
+    }
+
+    // Add serviceTypeId if provided and valid
+    const serviceTypeIdInt = toInt(serviceTypeId);
+    if (serviceTypeIdInt !== undefined) {
+      createData.serviceTypeId = serviceTypeIdInt;
+    }
+
     // Create the service in the database with proper type conversion
     const newService = await db.service.create({
-      data: {
-        categoryId: categoryId || '',
-        name: name || '',
-        description: description || '',
-        rate: toNumber(rate, 0),
-        min_order: toNumber(min_order, 0),
-        max_order: toNumber(max_order, 0),
-        perqty: toNumber(perqty, 1000),
-        avg_time: avg_time || '',
-        updateText: updateText || '',
-        serviceTypeId: serviceTypeId || null,
-        refill: toBool(refill),
-        cancel: toBool(cancel),
-        refillDays: toNumber(refillDays, 30),
-        refillDisplay: toNumber(refillDisplay, 24),
-        personalizedService: toBool(personalizedService),
-        serviceSpeed: serviceSpeed || 'medium',
-        mode: mode || 'manual',
-        userId: session.user.id,
-      },
+      data: createData,
     });
 
     return NextResponse.json(

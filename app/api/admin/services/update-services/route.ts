@@ -58,30 +58,77 @@ export async function PUT(request: Request) {
       return defaultValue;
     };
 
+    // Helper function to convert string to integer for IDs
+    const toInt = (value: unknown): number | undefined => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string' && value.trim() !== '') {
+        const num = parseInt(value);
+        return isNaN(num) ? undefined : num;
+      }
+      return undefined;
+    };
+
+    // Prepare update data - only include fields that are provided
+    const updateData: any = {};
+
+    if (categoryId !== undefined && categoryId !== null && categoryId !== '') {
+      updateData.categoryId = toInt(categoryId);
+    }
+    if (name !== undefined && name !== null && name !== '') {
+      updateData.name = name;
+    }
+    if (description !== undefined && description !== null && description !== '') {
+      updateData.description = description;
+    }
+    if (rate !== undefined && rate !== null && rate !== '') {
+      updateData.rate = toNumber(rate, 0);
+    }
+    if (min_order !== undefined && min_order !== null && min_order !== '') {
+      updateData.min_order = toNumber(min_order, 0);
+    }
+    if (max_order !== undefined && max_order !== null && max_order !== '') {
+      updateData.max_order = toNumber(max_order, 0);
+    }
+    if (perqty !== undefined && perqty !== null && perqty !== '') {
+      updateData.perqty = toNumber(perqty, 1000);
+    }
+    if (avg_time !== undefined && avg_time !== null && avg_time !== '') {
+      updateData.avg_time = avg_time;
+    }
+    if (updateText !== undefined && updateText !== null && updateText !== '') {
+      updateData.updateText = updateText;
+    }
+    if (serviceTypeId !== undefined && serviceTypeId !== null && serviceTypeId !== '') {
+      updateData.serviceTypeId = toInt(serviceTypeId);
+    }
+    if (refill !== undefined && refill !== null) {
+      updateData.refill = toBool(refill);
+    }
+    if (cancel !== undefined && cancel !== null) {
+      updateData.cancel = toBool(cancel);
+    }
+    if (refillDays !== undefined && refillDays !== null && refillDays !== '') {
+      updateData.refillDays = toNumber(refillDays, 30);
+    }
+    if (refillDisplay !== undefined && refillDisplay !== null && refillDisplay !== '') {
+      updateData.refillDisplay = toNumber(refillDisplay, 24);
+    }
+    if (personalizedService !== undefined && personalizedService !== null) {
+      updateData.personalizedService = toBool(personalizedService);
+    }
+    if (serviceSpeed !== undefined && serviceSpeed !== null && serviceSpeed !== '') {
+      updateData.serviceSpeed = serviceSpeed;
+    }
+    if (mode !== undefined && mode !== null && mode !== '') {
+      updateData.mode = mode;
+    }
+
     // Update the service in the database with proper type conversion
     await db.service.update({
       where: {
-        id: id,
+        id: parseInt(id),
       },
-      data: {
-        categoryId: categoryId || '',
-        name: name || '',
-        description: description || '',
-        rate: toNumber(rate, 0),
-        min_order: toNumber(min_order, 0),
-        max_order: toNumber(max_order, 0),
-        perqty: toNumber(perqty, 1000),
-        avg_time: avg_time || '',
-        updateText: updateText || '',
-        serviceTypeId: serviceTypeId || null,
-        refill: toBool(refill),
-        cancel: toBool(cancel),
-        refillDays: toNumber(refillDays, 30),
-        refillDisplay: toNumber(refillDisplay, 24),
-        personalizedService: toBool(personalizedService),
-        serviceSpeed: serviceSpeed || 'medium',
-        mode: mode || 'manual',
-      },
+      data: updateData,
     });
     return NextResponse.json({
       error: null,
@@ -115,8 +162,18 @@ export async function GET(request: Request) {
       },
       include: {
         category: true,
+        serviceType: true,
       },
     });
+
+    if (!result) {
+      return NextResponse.json({
+        error: 'Service not found',
+        data: null,
+        success: false,
+      });
+    }
+
     return NextResponse.json(
       {
         error: null,
@@ -128,7 +185,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Failed to fetch categories' + error,
+        error: 'Failed to fetch service: ' + error,
         data: null,
         success: false,
       },
