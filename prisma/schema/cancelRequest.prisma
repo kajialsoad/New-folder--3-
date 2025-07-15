@@ -1,0 +1,20 @@
+model CancelRequest {
+  id           Int       @id @default(autoincrement())
+  orderId      Int
+  userId       Int
+  reason       String
+  status       String    @default("pending")
+  refundAmount Float?
+  adminNotes   String?
+  processedBy  Int?
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  order        NewOrder  @relation(fields: [orderId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([orderId], map: "CancelRequest_orderId_fkey")
+  @@index([userId], map: "CancelRequest_userId_fkey")
+  @@index([status])
+  @@index([createdAt])
+}
