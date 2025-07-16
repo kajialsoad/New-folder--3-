@@ -1,4 +1,4 @@
-v// Simple in-memory rate limiting
+// Simple in-memory rate limiting
 interface RateLimitStore {
   [key: string]: {
     count: number;
