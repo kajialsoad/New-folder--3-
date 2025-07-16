@@ -18,4 +18,5 @@ model RefillRequest {
   @@index([status])
   @@index([createdAt])
   @@index([processedBy], map: "RefillRequest_processedBy_fkey")
+  @@map("refillrequest")
 }

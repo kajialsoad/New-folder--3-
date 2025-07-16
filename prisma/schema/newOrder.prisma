@@ -26,4 +26,5 @@ model NewOrder {
   @@index([categoryId], map: "NewOrder_categoryId_fkey")
   @@index([serviceId], map: "NewOrder_serviceId_fkey")
   @@index([userId], map: "NewOrder_userId_fkey")
+  @@map("neworder")
 }

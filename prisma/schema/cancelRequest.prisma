@@ -17,4 +17,5 @@ model CancelRequest {
   @@index([userId], map: "CancelRequest_userId_fkey")
   @@index([status])
   @@index([createdAt])
+  @@map("cancelrequest")
 }

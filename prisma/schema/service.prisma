@@ -34,4 +34,5 @@ model Service {
   @@index([favrouteCatId], map: "Service_favrouteCatId_fkey")
   @@index([serviceTypeId])
   @@index([status])
+  @@map("service")
 }

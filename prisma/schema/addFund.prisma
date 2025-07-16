@@ -24,4 +24,5 @@ model AddFund {
   user             User                      @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@map("addfund")
 }

@@ -8,4 +8,5 @@ model FavrouteCat {
   user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "FavrouteCat_userId_fkey")
+  @@map("favroutecat")
 }
